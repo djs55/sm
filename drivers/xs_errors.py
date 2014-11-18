@@ -19,13 +19,14 @@
 #
 
 import os
+import sys
 import xml.dom.minidom
 import SR
 import util
 
 XML_DEFS = '/opt/xensource/sm/XE_SR_ERRORCODES.xml'
 class XenError(Exception):
-    def __init__(self, key, opterr=None):
+    def __init__(self, key, opterr=None, exc_info = sys.exc_info()):
         # Check the XML definition file exists
         if not os.path.exists(XML_DEFS):
             raise Exception("No XML def file found")
@@ -49,10 +50,10 @@ class XenError(Exception):
             if opterr is not None:
                 errormessage += " [opterr=%s]" % opterr
             util.SMlog("Raising exception [%d, %s]" % (errorcode, errormessage))
-            raise SR.SROSError(errorcode, errormessage)
+            raise SR.SROSError(errorcode, errormessage, exc_info)
 
         # development error
-        raise SR.SROSError(1, "Error reporting error, unknown key %s" % key)
+        raise SR.SROSError(1, "Error reporting error, unknown key %s" % key, exc_info)
             
 
     def _fromxml(self, tag):

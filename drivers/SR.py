@@ -23,7 +23,7 @@ import xml.dom.minidom
 import errno
 import xs_errors
 import XenAPI, xmlrpclib, util
-import copy, os
+import copy, os, json, traceback
 
 MOUNT_BASE = '/var/run/sr-mount'
 DEFAULT_TAP = 'vhd'
@@ -36,17 +36,33 @@ LUNPERVDI = "LUNperVDI"
 class SRException(Exception):
     """Exception raised by storage repository operations"""
     errno = errno.EINVAL
-    def __init__(self, reason):
+    def __init__(self, reason, exc_info):
         Exception.__init__(self, reason)
+        self.exc_info = exc_info
 
     def toxml(self):
-        return xmlrpclib.dumps(xmlrpclib.Fault(int(self.errno), str(self)), "", True)
+    	files = []
+  	lines = []
+    	for slot in traceback.extract_tb(self.exc_info[2]):
+        	files.append(slot[0])
+        	lines.append(slot[1])
+    	backtrace = json.dumps({
+     		"error": str(self.exc_info[1]),
+      		"files": files,
+      		"lines": lines,
+    	})
+
+	result = {
+		"Status": "Failure",
+		"ErrorDescription": [ "SR_BACKEND_FAILURE_WITH_BACKTRACE", backtrace, str(self.errno), str(self) ]
+	} 
+	return xmlrpclib.dumps((result,), "", True)
 
 class SROSError(SRException):
     """Wrapper for OSError"""
-    def __init__(self, errno, reason):
+    def __init__(self, errno, reason, exc_info):
         self.errno = errno
-        Exception.__init__(self, reason)
+        SRException.__init__(self, reason, exc_info)
 
 backends = []
 def registerSR(SRClass):

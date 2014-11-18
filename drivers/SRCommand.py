@@ -128,9 +128,9 @@ class SRCommand:
             util.logException('tapdisk exists exception: %s' % e)
             raise xs_errors.XenError('TapdiskAlreadyRunning', e.__str__())
 
-        except:
+        except Exception, e:
             util.logException('generic exception: %s' % self.cmd)
-            raise
+            raise xs_errors.XenError('SMGeneral', e.__str__(), sys.exc_info())
 
     def _run_locked(self, sr):
         lockSR = False
