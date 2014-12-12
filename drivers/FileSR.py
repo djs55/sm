@@ -31,7 +31,7 @@ from lock import Lock
 geneology = {}
 CAPABILITIES = ["SR_PROBE","SR_UPDATE", \
                 "VDI_CREATE","VDI_DELETE","VDI_ATTACH","VDI_DETACH", \
-                "VDI_CLONE","VDI_SNAPSHOT","VDI_RESIZE",
+                "VDI_CLONE","VDI_SNAPSHOT","VDI_RESIZE", \
                 "ATOMIC_PAUSE"]
 
 CONFIGURATION = [ [ 'location', 'local directory path (required)' ] ]
@@ -656,6 +656,17 @@ class FileVDI(VDI.VDI):
     def clone(self, sr_uuid, vdi_uuid):
             return self._do_snapshot(sr_uuid, vdi_uuid, self.SNAPSHOT_DOUBLE)
 
+    def revert(self, sr_uuid, vdi_uuid, dest_uuid):
+        util.SMlog("VDI.revert: sr=%s vdi=%s dest=%s" % (sr_uuid, vdi_uuid, dest_uuid))
+        if self.vdi_type != vhdutil.VDI_TYPE_VHD:
+            raise xs_errors.XenError('Unimplemented')
+
+        dest_path = os.path.join(self.sr.path, dest_uuid + vhdutil.FILE_EXTN[vhdutil.VDI_TYPE_VHD])
+        assert(util.pathexists(dest_path))
+        os.unlink(dest_path)
+	
+        self._do_snapshot(sr_uuid, vdi_uuid, self.SNAPSHOT_DOUBLE, dest_uuid=dest_uuid)
+
     def compose(self, sr_uuid, vdi1, vdi2):
         if self.vdi_type != vhdutil.VDI_TYPE_VHD:
             raise xs_errors.XenError('Unimplemented')
@@ -682,18 +693,18 @@ class FileVDI(VDI.VDI):
 
         vhdutil.killData(self.path)
 
-    def _do_snapshot(self, sr_uuid, vdi_uuid, snap_type, secondary=None):
+    def _do_snapshot(self, sr_uuid, vdi_uuid, snap_type, secondary=None, dest_uuid=None):
         if self.vdi_type != vhdutil.VDI_TYPE_VHD:
             raise xs_errors.XenError('Unimplemented')
 
         if not blktap2.VDI.tap_pause(self.session, sr_uuid, vdi_uuid):
             raise util.SMException("failed to pause VDI %s" % vdi_uuid)
         try:
-            return self._snapshot(snap_type)
+            return self._snapshot(snap_type, dest_uuid)
         finally:
             blktap2.VDI.tap_unpause(self.session, sr_uuid, vdi_uuid, secondary)
 
-    def _snapshot(self, snap_type):
+    def _snapshot(self, snap_type, dest_uuid=None):
         util.SMlog("FileVDI._snapshot for %s (type %s)" % (self.uuid, snap_type))
 
         args = []
@@ -701,10 +712,12 @@ class FileVDI(VDI.VDI):
         args.append(self.sr.uuid)
         args.append(self.uuid)
 
-        dest = None
+        dest = dest_uuid
         dst = None
         if snap_type == self.SNAPSHOT_DOUBLE:
-            dest = util.gen_uuid()
+            if dest is None:
+                dest = util.gen_uuid()
+          
             dst = os.path.join(self.sr.path, "%s.%s" % (dest,self.vdi_type))
             args.append(dest)
 
@@ -804,7 +817,7 @@ class FileVDI(VDI.VDI):
                     base_vdi.sm_config['vhd-parent'] = grandparent
 
             try:
-                if snap_type == self.SNAPSHOT_DOUBLE:
+                if snap_type == self.SNAPSHOT_DOUBLE and dest_uuid is None:
                     leaf_vdi_ref = leaf_vdi._db_introduce()
                     util.SMlog("vdi_clone: introduced VDI: %s (%s)" % \
                             (leaf_vdi_ref,dest))
