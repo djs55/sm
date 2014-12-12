@@ -227,6 +227,17 @@ class VDI(object):
         """
         raise xs_errors.XenError('Unimplemented')
 
+    def revert(self, sr_uuid, vdi_uuid, snap_uuid):
+        """Make the contents of [vdi_uuid] the same as [snap_uuid].
+
+        This operation destroys the data contained within [vdi_uuid]
+        and replaces it with a copy of the data contained within
+        [snap_uuid]. If the driver does not support revert then this
+        operation should raise SRUnsupportedOperation.
+        This operation is idempotent.
+        """
+        raise xs_errors.XenError('Unimplemented')
+
     def resize(self, sr_uuid, vdi_uuid, size):
         """Resize the given VDI to size <size> MB. Size can
         be any valid disk size greater than [or smaller than]

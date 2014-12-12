@@ -29,7 +29,7 @@ import os
 import copy
 
 NEEDS_VDI_OBJECT = [
-        "vdi_update", "vdi_create", "vdi_delete", "vdi_snapshot", "vdi_clone",
+        "vdi_update", "vdi_create", "vdi_delete", "vdi_snapshot", "vdi_revert", "vdi_clone",
         "vdi_resize", "vdi_resize_online", "vdi_attach", "vdi_detach",
         "vdi_activate", "vdi_deactivate", "vdi_attach_from_config",
         "vdi_generate_config", "vdi_compose",
@@ -53,6 +53,7 @@ EXCEPTION_TYPE = {
         "vdi_resize"        : "VDIResize",
         "vdi_resize_online" : "VDIResize",
         "vdi_snapshot"      : "VDISnapshot",
+        "vdi_revert"        : "VDIRevert",
         "vdi_clone"         : "VDIClone",
 }
 
@@ -247,6 +248,10 @@ class SRCommand:
 
         elif self.cmd == 'vdi_snapshot':
             return target.snapshot(self.params['sr_uuid'], self.vdi_uuid)
+
+        elif self.cmd == 'vdi_revert':
+            dest_uuid = sr.session.xenapi.VDI.get_uuid(self.params['args'][0])
+            return target.revert(self.params['sr_uuid'], self.vdi_uuid, dest_uuid)
 
         elif self.cmd == 'vdi_clone':
             return target.clone(self.params['sr_uuid'], self.vdi_uuid)            
